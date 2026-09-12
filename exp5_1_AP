@@ -1,0 +1,81 @@
+import java.util.LinkedHashMap;
+import java.util.Map;
+public class AccessChecker {
+    public static String classifyAccess(String fieldModifier, String accessorContext) {
+        if (fieldModifier.equals("public")) return "ALLOWED";
+        if (fieldModifier.equals("protected")) {
+            if (accessorContext.equals("SAME_CLASS") || 
+                accessorContext.equals("SAME_PACKAGE") || 
+                accessorContext.equals("SUBCLASS_DIFFERENT_PACKAGE_OWN_TYPE")) {
+                return "ALLOWED";
+            }
+            return "DENIED";
+        }
+        if (fieldModifier.equals("default")) {
+            if (accessorContext.equals("SAME_CLASS") || accessorContext.equals("SAME_PACKAGE")) {
+                return "ALLOWED";
+            }
+            return "DENIED";
+        }
+        if (fieldModifier.equals("private")) {
+            return accessorContext.equals("SAME_CLASS") ? "ALLOWED" : "DENIED";
+        }
+        return "DENIED";
+    }
+    public static String summarizeByModifier(String[][] attempts) {
+        Map<String, int[]> counts = new LinkedHashMap<>();
+        counts.put("private", new int[]{0, 0});
+        counts.put("default", new int[]{0, 0});
+        counts.put("protected", new int[]{0, 0});
+        counts.put("public", new int[]{0, 0});
+        if (attempts != null) {
+            for (String[] attempt : attempts) {
+                if (attempt == null || attempt.length < 2) continue;
+                String res = classifyAccess(attempt[0], attempt[1]);
+                if (counts.containsKey(attempt[0])) {
+                    if ("ALLOWED".equals(res)) counts.get(attempt[0])[0]++;
+                    else counts.get(attempt[0])[1]++;
+                }
+            }
+        }
+        StringBuilder sb = new StringBuilder();
+        boolean first = true;
+        for (Map.Entry<String, int[]> entry : counts.entrySet()) {
+            if (!first) sb.append(" | ");
+            sb.append(entry.getKey()).append(": ")
+              .append(entry.getValue()[0]).append(" allowed / ")
+              .append(entry.getValue()[1]).append(" denied");
+            first = false;
+        }
+        return sb.toString();
+    }
+    public static String describeContext(String accessorContext) {
+        if (accessorContext == null || accessorContext.isEmpty()) return "";
+        String[] words = accessorContext.split("_");
+        StringBuilder result = new StringBuilder();
+        for (int i = 0; i < words.length; i++) {
+            if (words[i].isEmpty()) continue;
+            result.append(words[i].substring(0, 1).toUpperCase())
+                  .append(words[i].substring(1).toLowerCase());
+            if (i < words.length - 1) result.append(" ");
+        }
+        return result.toString();
+    }
+    // Main method added so the program can be run
+    public static void main(String[] args) {
+        System.out.println("Test 1: " + classifyAccess("private", "SAME_CLASS"));
+        System.out.println("Test 2: " + classifyAccess("protected", "DIFFERENT_PACKAGE"));
+        String[][] attempts = {
+            {"private", "SAME_CLASS"},
+            {"private", "SAME_PACKAGE"},
+            {"default", "SAME_PACKAGE"},
+            {"default", "DIFFERENT_PACKAGE"},
+            {"protected", "SAME_PACKAGE"},
+            {"protected", "SAME_CLASS"},
+            {"public", "DIFFERENT_PACKAGE"}
+        };
+        System.out.println("Summary: " + summarizeByModifier(attempts));
+        System.out.println("Test 3: " + classifyAccess("protected", "SUBCLASS_DIFFERENT_PACKAGE_OWN_TYPE"));
+        System.out.println("Context: " + describeContext("SUBCLASS_DIFFERENT_PACKAGE_OWN_TYPE"));
+    }
+}
